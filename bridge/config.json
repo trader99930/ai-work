@@ -1,0 +1,12 @@
+{
+  "host": "0.0.0.0",
+  "port": 8082,
+  "llama_host": "127.0.0.1",
+  "llama_port": 8085,
+  "default_model": "Qwen2.5-3B-Instruct-Q4_K_M.gguf",
+  "context_size": 2048,
+  "threads": 4,
+  "repeat_penalty": 1.1,
+  "models_dir": "/ai_workspace/models",
+  "llama_bin": "/ai_workspace/llama.cpp/build/bin/llama-server"
+}

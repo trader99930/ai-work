@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local AI Workspace • llama.cpp Bridge</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app" class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo-icon">⚡</div>
+        <div>
+          <h1 class="logo-title">Local AI Workspace</h1>
+          <span class="logo-sub">llama.cpp GGUF Bridge • Port 8082</span>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <!-- Model Switcher in Header -->
+        <div class="model-select-wrapper">
+          <span class="status-dot" id="headerStatusDot"></span>
+          <select id="headerModelSelect" class="header-select">
+            <option value="">Detecting models...</option>
+          </select>
+          <button id="btnSwitchModel" class="btn btn-sm btn-primary" title="Switch Model">Switch</button>
+        </div>
+
+        <!-- System Pill -->
+        <div class="sys-pill" id="sysPill" title="System Memory and CPU">
+          <span class="sys-item" id="ramText">RAM: --</span>
+          <span class="sys-item" id="cpuText">CPU: --</span>
+        </div>
+
+        <button id="btnUnload" class="btn btn-sm btn-ghost" title="Unload active model to free RAM">Unload</button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="chat">💬 Chat Playground</button>
+      <button class="nav-tab" data-tab="models">📦 GGUF Model Hub</button>
+      <button class="nav-tab" data-tab="api">🔌 OpenAI API Bridge</button>
+      <button class="nav-tab" data-tab="logs">📜 Server Logs</button>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Tab 1: Chat Playground -->
+      <section id="tab-chat" class="tab-pane active">
+        <div class="chat-layout">
+          <!-- Chat Panel -->
+          <div class="chat-panel">
+            <div class="chat-header">
+              <div class="chat-status-bar">
+                <span id="activeModelLabel" class="active-badge">Active: Detecting...</span>
+                <span id="statusMessage" class="status-text">Checking health...</span>
+              </div>
+              <div class="chat-actions">
+                <button id="btnClearChat" class="btn btn-xs btn-outline">Clear Chat</button>
+              </div>
+            </div>
+
+            <!-- Messages Stream Area -->
+            <div class="messages-container" id="messagesContainer">
+              <div class="message assistant welcome-card">
+                <div class="message-sender">🤖 AI Assistant</div>
+                <div class="message-body">
+                  <p><strong>Local AI Workspace is ready.</strong></p>
+                  <p>Both <strong>Hermes-3-Llama-3.2-3B</strong> and <strong>Qwen2.5-3B-Instruct</strong> are detected in <code>/ai_workspace/models</code>. Select a model or start chatting below!</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Input Bar -->
+            <div class="chat-input-wrapper">
+              <textarea id="chatInput" placeholder="Type your message or prompt here... (Shift+Enter for new line)" rows="2"></textarea>
+              <div class="input-actions">
+                <button id="btnStop" class="btn btn-danger hidden">Stop</button>
+                <button id="btnSend" class="btn btn-primary">Send ↵</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parameter Sidebar -->
+          <aside class="params-sidebar">
+            <h3 class="sidebar-title">Model Settings</h3>
+
+            <div class="form-group">
+              <label for="systemPrompt">System Prompt</label>
+              <div class="presets-row">
+                <button class="preset-btn" data-preset="coder">Coding</button>
+                <button class="preset-btn" data-preset="general">Assistant</button>
+                <button class="preset-btn" data-preset="analyst">Analyst</button>
+              </div>
+              <textarea id="systemPrompt" rows="4">You are a helpful, brilliant, and concise local AI assistant.</textarea>
+            </div>
+
+            <div class="form-group">
+              <div class="slider-header">
+                <label for="temperature">Temperature</label>
+                <span id="tempVal" class="slider-val">0.7</span>
+              </div>
+              <input type="range" id="temperature" min="0.0" max="1.5" step="0.05" value="0.7">
+            </div>
+
+            <div class="form-group">
+              <div class="slider-header">
+                <label for="maxTokens">Max Tokens</label>
+                <span id="maxTokensVal" class="slider-val">1024</span>
+              </div>
+              <input type="range" id="maxTokens" min="64" max="4096" step="64" value="1024">
+            </div>
+
+            <div class="form-group">
+              <div class="slider-header">
+                <label for="topP">Top-P</label>
+                <span id="topPVal" class="slider-val">0.9</span>
+              </div>
+              <input type="range" id="topP" min="0.1" max="1.0" step="0.05" value="0.9">
+            </div>
+
+            <div class="form-group">
+              <div class="slider-header">
+                <label for="repeatPenalty">Repeat Penalty</label>
+                <span id="repeatPenaltyVal" class="slider-val">1.1</span>
+              </div>
+              <input type="range" id="repeatPenalty" min="1.0" max="1.5" step="0.05" value="1.1">
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- Tab 2: Model Hub -->
+      <section id="tab-models" class="tab-pane">
+        <div class="model-hub-header">
+          <div>
+            <h2>Detected GGUF Models</h2>
+            <p class="subtitle">Scanned from <code>/ai_workspace/models</code></p>
+          </div>
+          <button id="btnRefreshModels" class="btn btn-outline">🔄 Refresh List</button>
+        </div>
+        <div class="models-grid" id="modelsGrid">
+          <!-- Dynamically populated model cards -->
+        </div>
+      </section>
+
+      <!-- Tab 3: API Bridge -->
+      <section id="tab-api" class="tab-pane">
+        <div class="api-docs-container">
+          <h2>OpenAI Compatible API Bridge</h2>
+          <p class="subtitle">Use this local endpoint with any OpenAI-compatible tool, agent, LangChain, LlamaIndex, or SDK.</p>
+
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="endpoint-path">http://localhost:8082/v1/models</span>
+            </div>
+            <p>Lists all detected GGUF models available in the workspace.</p>
+          </div>
+
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="endpoint-path">http://localhost:8082/v1/chat/completions</span>
+            </div>
+            <p>Full chat completion endpoint supporting streaming SSE and JSON mode.</p>
+          </div>
+
+          <!-- Code Snippets -->
+          <div class="snippet-box">
+            <div class="snippet-header">
+              <span>cURL Example (Streaming)</span>
+              <button class="copy-btn" onclick="copySnippet('curlCode')">Copy</button>
+            </div>
+            <pre><code id="curlCode">curl -X POST http://localhost:8082/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "Qwen2.5-3B-Instruct-Q4_K_M",
+    "messages": [{"role": "user", "content": "Hello! Introduce yourself."}],
+    "stream": true,
+    "temperature": 0.7
+  }'</code></pre>
+          </div>
+
+          <div class="snippet-box">
+            <div class="snippet-header">
+              <span>Python (openai SDK)</span>
+              <button class="copy-btn" onclick="copySnippet('pythonCode')">Copy</button>
+            </div>
+            <pre><code id="pythonCode">from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8082/v1",
+    api_key="not-needed"
+)
+
+response = client.chat.completions.create(
+    model="Qwen2.5-3B-Instruct-Q4_K_M",
+    messages=[{"role": "user", "content": "Write a fast Python quicksort function"}],
+    stream=True
+)
+
+for chunk in response:
+    content = chunk.choices[0].delta.content or ""
+    print(content, end="", flush=True)</code></pre>
+          </div>
+
+          <div class="test-api-section">
+            <h3>Quick API Bridge Verification</h3>
+            <button id="btnTestApi" class="btn btn-primary">Run Test Request</button>
+            <div id="testApiResult" class="test-api-box hidden"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 4: Server Logs -->
+      <section id="tab-logs" class="tab-pane">
+        <div class="logs-header">
+          <h2>llama-server Live Logs</h2>
+          <div class="logs-controls">
+            <label><input type="checkbox" id="autoScrollLogs" checked> Auto-scroll</label>
+            <button id="btnRefreshLogs" class="btn btn-sm btn-outline">🔄 Refresh</button>
+          </div>
+        </div>
+        <pre class="logs-console" id="logsConsole">Fetching logs...</pre>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
